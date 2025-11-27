@@ -1,0 +1,12 @@
+numpy
+ipython
+ipywidgets
+kagglehub
+plotly
+torch
+torchmetrics
+torchvision
+jupyter
+pandas
+torch_tb_profiler
+tensorflow
