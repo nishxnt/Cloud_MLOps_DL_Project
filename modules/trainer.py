@@ -2,7 +2,7 @@ from typing import Mapping, Optional, Iterator, Any
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 
 class Trainer(nn.Module):
@@ -22,10 +22,14 @@ class Trainer(nn.Module):
         self.optimizer = optimizer or optim.Adam(self.model.parameters(), lr)
         self.loss_fn = loss_fn
         self.device = device
+        self.history: dict[str, list[float]] = {"epoch_loss": []}
 
-    def train(self, dataloader: DataLoader, *, epochs: int = 100, silent: bool = False) -> None:
+
+    def train(self, dataloader: DataLoader, *, epochs: int = 100, silent: bool = False):
+        self.history = {"epoch_loss": []}
         for _ in self.train_iter(dataloader, epochs=epochs, silent=silent):
             pass
+        return self.history
 
     def train_iter(
         self,
@@ -37,10 +41,24 @@ class Trainer(nn.Module):
 
         model = self.model.to(self.device)
         self._optimizer_to(self.optimizer, self.device)
+        
+        epoch_bar = tqdm(range(epochs), desc="Epochs", disable=silent)
 
-        for epoch in tqdm(range(epochs)):
+                # epoch loop with outer tqdm
+        for epoch in epoch_bar:
             model.train()
-            for data, target in dataloader:
+            running_loss = 0.0
+            n_samples = 0
+
+            # inner tqdm over batches so you see batch progress + loss
+            batch_bar = tqdm(
+                dataloader,
+                desc=f"Epoch {epoch + 1}/{epochs}",
+                leave=False,
+                disable=silent,
+            )
+
+            for data, target in batch_bar:
                 x = data.to(self.device)
                 y = target.to(self.device)
 
@@ -49,8 +67,23 @@ class Trainer(nn.Module):
                 loss = self.loss_fn(outputs, y)
                 loss.backward()
                 self.optimizer.step()
+                
+                bs = y.size(0)
+                running_loss += loss.item() * bs
+                n_samples += bs
 
-            yield model  
+                # show current loss in the batch progress bar
+                batch_bar.set_postfix(loss=float(loss.detach().cpu()))
+            
+            # average loss for this epoch
+            epoch_loss = running_loss / max(1, n_samples)
+            self.history["epoch_loss"].append(epoch_loss)
+
+            # show epoch loss in outer bar
+            epoch_bar.set_postfix(loss=epoch_loss)
+            
+            # yield model after each epoch (unchanged behaviour)
+            yield model 
             
     def _optimizer_to(self, optim_: torch.optim.Optimizer, device: torch.device) -> None:
         """Moves optimizer state tensors to the device."""
