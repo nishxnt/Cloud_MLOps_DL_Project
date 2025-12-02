@@ -20,6 +20,8 @@ You implement the full lifecycle:
 
 The model used is **SqueezeNet**, chosen for its lightweight architecture and production-friendly size.
 
+---
+
 ## 📁 Project Repository Structure
 
 ```bash
@@ -45,6 +47,8 @@ The model used is **SqueezeNet**, chosen for its lightweight architecture and pr
 ├── app.py                     # Streamlit UI
 ├── main_training.py           # Vertex Workbench training script
 └── README.md
+```
+---
 
 ## 🚀 MLOps Pipeline Overview
 
